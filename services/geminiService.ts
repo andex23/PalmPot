@@ -67,19 +67,25 @@ export const generateNigerianRecipe = async (cuisine: string, mealType: string, 
         const recipe: Recipe = JSON.parse(recipeText);
 
         console.log(`Recipe for ${recipe.recipeName} generated. Now generating image...`);
-        const imageResponse = await ai.models.generateImages({
-            model: 'imagen-4.0-generate-001',
-            prompt: `A delicious, mouth-watering plate of Nigerian ${recipe.recipeName}, professionally photographed with vibrant colors, served hot.`,
-            config: {
-                numberOfImages: 1,
-                outputMimeType: 'image/jpeg',
-                aspectRatio: '16:9',
-            },
-        });
-        
-        const base64ImageBytes = imageResponse.generatedImages[0].image.imageBytes;
-        const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
-        console.log("Image generated successfully.");
+        let imageUrl: string;
+        try {
+            const imageResponse = await ai.models.generateImages({
+                model: 'imagen-4.0-generate-001',
+                prompt: `A delicious, mouth-watering plate of Nigerian ${recipe.recipeName}, professionally photographed with vibrant colors, served hot.`,
+                config: {
+                    numberOfImages: 1,
+                    outputMimeType: 'image/jpeg',
+                    aspectRatio: '16:9',
+                },
+            });
+            const base64ImageBytes = imageResponse.generatedImages[0].image.imageBytes;
+            imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+            console.log("Image generated successfully.");
+        } catch (imgError) {
+            console.warn("Image generation failed, using Unsplash fallback instead.", imgError);
+            const query = encodeURIComponent(`${recipe.recipeName} nigerian food`);
+            imageUrl = `https://source.unsplash.com/1280x720/?${query}`;
+        }
 
         return { recipe, imageUrl };
 
