@@ -75,6 +75,7 @@ const PalmPotAVD: React.FC = () => {
     const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
     const [view, setView] = useState<'generator' | 'saved'>('generator');
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const [linkCopyText, setLinkCopyText] = useState<string>('Copy link');
 
     // --- HOOKS & HANDLERS (UNCHANGED LOGIC, NEW HANDLER FOR UX) ---
     useEffect(() => {
@@ -93,6 +94,39 @@ const PalmPotAVD: React.FC = () => {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    // Initialize state from URL params on first load
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('q');
+        const c = params.get('cuisine');
+        const m = params.get('meal');
+        if (q) setSearchQuery(q);
+        if (c) setCuisine(c);
+        if (m) setMealType(m);
+    }, []);
+
+    // Keep URL in sync with current inputs
+    useEffect(() => {
+        const params = new URLSearchParams();
+        if (searchQuery) params.set('q', searchQuery);
+        if (cuisine && cuisine !== 'Any') params.set('cuisine', cuisine);
+        if (mealType && mealType !== 'Any') params.set('meal', mealType);
+        const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+        window.history.replaceState(null, '', newUrl);
+    }, [searchQuery, cuisine, mealType]);
+
+    const handleCopyLink = useCallback(async () => {
+        try {
+            await navigator.clipboard.writeText(window.location.href);
+            setLinkCopyText('Copied!');
+            setTimeout(() => setLinkCopyText('Copy link'), 2000);
+        } catch (err) {
+            console.error('Failed to copy link: ', err);
+            setLinkCopyText('Error');
+            setTimeout(() => setLinkCopyText('Copy link'), 2000);
+        }
     }, []);
 
     const handleSaveRecipe = (recipeToSave: Recipe, imageUrlToSave: string) => {
@@ -249,6 +283,14 @@ const PalmPotAVD: React.FC = () => {
                             >
                                 Surprise me
                             </button>
+                            <button
+                                onClick={handleCopyLink}
+                                disabled={isLoading}
+                                aria-label="Copy a shareable link for current query and filters"
+                                className="px-4 py-3 font-bold text-base rounded-lg border border-[--border] bg-[--panel] text-[--subtext] hover:bg-[--muted] hover:text-[--text] shadow-sm transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--surface] active:translate-y-px disabled:bg-[--muted] disabled:text-[--subtext]/50 disabled:cursor-not-allowed"
+                            >
+                                {linkCopyText}
+                            </button>
                         </div>
                          
                         <div className="mt-8">
@@ -384,7 +426,15 @@ const RecipeResultCard: React.FC<RecipeCardProps> = ({ recipe, imageUrl, onSave,
 
     return (
         <div className="bg-[--panel] border border-[--border] rounded-xl overflow-hidden shadow-[0_12px_40px_rgba(20,10,0,0.06)] motion-safe:transition-transform motion-safe:duration-300 motion-safe:hover:scale-[1.01]">
-            {imageUrl && <img src={imageUrl} alt={recipe.recipeName} className="w-full h-64 lg:h-80 object-cover" />}
+            {imageUrl && (
+                <img
+                    src={imageUrl}
+                    alt={recipe.recipeName}
+                    className="w-full h-64 lg:h-80 object-cover [transition-filter] duration-300"
+                    style={{ filter: 'blur(12px)' }}
+                    onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.filter = 'blur(0px)'; }}
+                />
+            )}
             <div className="p-6 md:p-8">
                 <div className="flex justify-between items-start gap-4 mb-3">
                     <h2 className="font-heading text-3xl md:text-4xl font-semibold text-[--text] flex-1">{recipe.recipeName}</h2>

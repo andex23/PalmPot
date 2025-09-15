@@ -84,7 +84,14 @@ export const generateNigerianRecipe = async (cuisine: string, mealType: string, 
         } catch (imgError) {
             console.warn("Image generation failed, using Unsplash fallback instead.", imgError);
             const query = encodeURIComponent(`${recipe.recipeName} nigerian food`);
-            imageUrl = `https://source.unsplash.com/1280x720/?${query}`;
+            // Deterministic signature based on dish name to stabilize image across sessions
+            let hash = 0;
+            for (let i = 0; i < recipe.recipeName.length; i++) {
+                hash = ((hash << 5) - hash) + recipe.recipeName.charCodeAt(i);
+                hash |= 0;
+            }
+            const sig = Math.abs(hash);
+            imageUrl = `https://source.unsplash.com/1280x720/?${query}&sig=${sig}`;
         }
 
         return { recipe, imageUrl };
